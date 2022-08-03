@@ -3,7 +3,12 @@
 # Makefile readme (en): <https://www.gnu.org/software/make/manual/html_node/index.html#SEC_Contents>
 
 SHELL = /bin/sh
-image_name = markdown-lint:local
+
+VERSION ?= $(shell git rev-list -1 HEAD)
+TAG_COMMIT ?= $(shell git rev-list --tags --max-count=1)
+TAG ?= $(shell git describe --tags ${TAG_COMMIT})
+
+image_name = public.ecr.aws/q5z8n0i3/markdown-lint:$(TAG)
 
 .PHONY : help build test shell clean
 .DEFAULT_GOAL : help
@@ -24,3 +29,12 @@ shell: ## Start shell into container
 
 clean: ## Make some clean
 	docker rmi -f $(image_name)
+
+docker-login:
+	@aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/q5z8n0i3
+
+build-multi-arch: docker-login
+	@docker build \
+		--push \
+		--platform linux/arm/v7,linux/arm64,linux/amd64 \
+		--tag $(image_name) -f Dockerfile .
